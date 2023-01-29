@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Test Suit</title>
+  <script>
+    function assert(value, desc) {
+      var li = document.createElement("li")
+      li.className = value ? "pass" : "fail";
+      li.appendChild(document.createTextNode(desc))
+      document.getElementById("results").appendChild(li)
+    }
+  </script>
+  <style>
+    #results li.pass {
+      color: green;
+    }
+
+    #results li.fail {
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+  <ul id="results"></ul>
+  <script>
+      // Write your test scripts here
+      // and using `assert()` to show wheather the test is correct
+    var outerValue = "samurai"
+    var later;
+    function outerFunction() {
+      var innerValue = "ninja"
+
+      function innerFunction() {
+        assert(outerValue === "samurai", "I can see samurai")
+        assert(innerValue === "ninja", "I can see the ninja")
+      }
+
+      later = innerFunction
+    }
+
+    outerFunction();
+    later()
+  </script>
+</body>
+
+</html>

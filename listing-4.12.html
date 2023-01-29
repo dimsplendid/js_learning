@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Test Suit</title>
+  <script>
+    function assert(value, desc) {
+      var li = document.createElement("li")
+      li.className = value ? "pass" : "fail";
+      li.appendChild(document.createTextNode(desc))
+      document.getElementById("results").appendChild(li)
+    }
+  </script>
+  <style>
+    #results li.pass {
+      color: green;
+    }
+
+    #results li.fail {
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+  <ul id="results"></ul>
+  <script>
+    function forEach(list, callback) {
+      for (var n = 0; n < list.length; n++) {
+        callback.call(list[n], n)
+      }
+    }
+
+    var weapons = [
+      { type: 'shuriken'},
+      { type: 'katana'},
+      { type: 'nunchucks'}
+    ]
+    forEach(
+      weapons,
+      function (index) {
+        assert(this === weapons[index], 
+        "Got the expected value of " + weapons[index].type)
+      }
+    )
+  </script>
+</body>
+
+</html>

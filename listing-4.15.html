@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Test Suit</title>
+  <script>
+    function assert(value, desc) {
+      var li = document.createElement("li")
+      li.className = value ? "pass" : "fail";
+      li.appendChild(document.createTextNode(desc))
+      document.getElementById("results").appendChild(li)
+    }
+  </script>
+  <style>
+    #results li.pass {
+      color: green;
+    }
+
+    #results li.fail {
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+  <button id="test">Click Me</button>
+  <ul id="results"></ul>
+  <script>
+    "use strict"
+    function Button() {
+      this.clicked = false;
+      this.click = function () {
+        this.clicked = true;
+        assert(button.clicked, "The button is clicked")
+        console.log(this)
+        console.log(button)
+      }
+    }
+    var button = new Button();
+    var elem = document.getElementById("test")
+    elem.addEventListener("click", button.click.bind(button))
+
+    var boundFunction = button.click.bind(button)
+    assert(boundFunction != button.click, 
+    "Calling bind creates a completly new function")
+  </script>
+</body>
+
+</html>

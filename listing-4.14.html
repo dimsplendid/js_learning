@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Test Suit</title>
+  <script>
+    function assert(value, desc) {
+      var li = document.createElement("li")
+      li.className = value ? "pass" : "fail";
+      li.appendChild(document.createTextNode(desc))
+      document.getElementById("results").appendChild(li)
+    }
+  </script>
+  <style>
+    #results li.pass {
+      color: green;
+    }
+
+    #results li.fail {
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+  <button id="test">Click</button>
+  <ul id="results"></ul>
+  <script>
+    assert(this === window, "this === window")
+    var button = {
+      clicked: false,
+      click: () => {
+        this.clicked = true
+        assert(button.clicked, "The button has been clicked");
+        assert(this === window, "In arrow function this === window");
+        assert(window.clicked, "clicked is stored in window")
+      }
+    }
+
+    var elem = document.getElementById("test")
+    elem.addEventListener("click", button.click)
+  </script>
+</body>
+
+</html>

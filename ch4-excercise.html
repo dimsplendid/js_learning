@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Test Suit</title>
+  <script>
+    function assert(value, desc) {
+      var li = document.createElement("li")
+      li.className = value ? "pass" : "fail";
+      li.appendChild(document.createTextNode(desc))
+      document.getElementById("results").appendChild(li)
+    }
+  </script>
+  <style>
+    #results li.pass {
+      color: green;
+    }
+
+    #results li.fail {
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+  <ul id="results"></ul>
+  <script>
+    // Write your test scripts here
+    // and using `assert()` to show wheather the test is correct
+    // 1. 
+    function sum(...nums) {
+      var sum = 0;
+      for (var i = 0; i < nums.length; i++) {
+        sum += nums[i];
+      }
+      return sum;
+    }
+
+    assert(sum(1, 2, 3) === 6, "Sum of first three numbers is 6")
+    assert(sum(1, 2, 3, 4) === 10, "Sum of first four numbers is 10")
+
+    // 2. 
+    function getSamurai(sumurai) {
+      "use strict"
+      arguments[0] = "Ishida"
+      return sumurai
+    }
+    function getNinja(ninja) {
+      arguments[0] = "Fuma"
+      return ninja
+    }
+    assert(getSamurai("Toyotomi") === "Toyotomi", "The input is the same")
+    assert(getNinja("Yoshi") === "Fuma", "This would change to 'Fuma'")
+
+    // 3.
+    function whoAmI1() {
+      "use strict"
+      return this
+    }
+
+    function whoAmI2() {
+      return this
+    }
+
+    assert(whoAmI1() === undefined, "undefined")
+    assert(whoAmI2() === window, "window")
+
+    // 4.
+    var ninja1 = {
+      whoAmI: function() {
+        return this
+      }
+    }
+
+    var ninja2 = {
+      whoAmI: ninja1.whoAmI
+    }
+
+    var identify = ninja2.whoAmI
+
+    assert(ninja1.whoAmI() === ninja1, "ninja1")
+    assert(ninja2.whoAmI() === ninja2, "ninja2")
+    assert(identify() === window, "window")
+    assert(ninja1.whoAmI.call(ninja2) === ninja2, "ninja2")
+
+    // 5.
+    function Ninja() {
+      this.whoAmI = () => this;
+    }
+
+    var ninja1 = new Ninja();
+    var ninja2 =  {
+      whoAmI: ninja1.whoAmI
+    }
+
+    assert(ninja1.whoAmI() === ninja1, "ninja1")
+    assert(ninja2.whoAmI() === ninja1, "Still ninja1")
+
+    // 6.
+    function Ninja() {
+      this.whoAmI = function() {
+        return this;
+      }.bind(this)
+    }
+
+    var ninja1 = new Ninja()
+    var ninja2 = {
+      whoAmI: ninja1.whoAmI
+    }
+
+    assert(ninja1.whoAmI() === ninja1, "ninja1")
+    assert(ninja2.whoAmI() === ninja1, "still ninja1")
+
+  </script>
+</body>
+
+</html>
