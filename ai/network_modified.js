@@ -53,8 +53,13 @@ function nn_forward(nn, input, log=false) {
     return {predict: predict, log: tmp_log}
 }
 
+/**
+ * Return the derivative of sigmoid function of input array, element-wise.
+ * @param {Array|NdArray|number} x 
+ * @returns {NdArray}
+ */
 function dsigmoid(x) {
-    return nj.sigmoid(x).multiply(nj.ones(x.shape).subtract(x));
+    return nj.sigmoid(x).multiply(nj.ones(x.shape).subtract(nj.sigmoid(x)));
 }
 
 function nn_backprop(nn, input, target) {
@@ -65,28 +70,46 @@ function nn_backprop(nn, input, target) {
     let {zs, as} = log;
     let delta = nj.multiply(as.at(-1).subtract(target), dsigmoid(zs.at(-1)));
 
-    nabla_w.with(-1, delta.dot(as.at(-2).T));
-    nabla_b.with(-1, delta);
+    nabla_w = nabla_w.with(-1, delta.dot(as.at(-2).T));
+    nabla_b = nabla_b.with(-1, delta);
 
 
     for (let l = 2; l <= nn.w.length; l++) {
         let z = zs.at(-l);
         let sp = dsigmoid(z);
         delta = nn.w.at(-l+1).T.dot(delta).multiply(sp);
-        nabla_w.with(-l, delta.dot(as.at(-l-1).T));
-        nabla_b.with(-l, delta);
+        nabla_w = nabla_w.with(-l, delta.dot(as.at(-l-1).T));
+        nabla_b = nabla_b.with(-l, delta);
     }
 
-    return {nabla_w, nabla_b};
+    return {w: nabla_w, b: nabla_b};
+}
+
+function nn_update(nn, nabla, eta) {
+    nn.w = nn.w.map((wi, i) => wi.subtract(nabla.w[i].multiply(eta)));
+    nn.b = nn.b.map((bi, i) => bi.subtract(nabla.b[i].multiply(eta)));
+
+    return nn
+}
+
+function dist_square(v1, v2) {
+    let delta = v1.subtract(v2);
+    return nj.sum(delta.T.dot(delta));
 }
 // test main
 let nn = nn_init([4,2,3]);
 let input = nj.array([1, 0, 0, 0]).reshape([4,1]);
 let target = nj.array([0,0,1]).reshape([3,1])
-let result = nn_backprop(nn, input, target)
-console.log(result)
-// let z1 = nn.w[0].dot(input).add(nn.b[0]);
-// let l1 = nj.sigmoid(z1);
-// let z2 = nn.w[1].dot(l1).add(nn.b[1]);
-// let l2 = nj.sigmoid(z2);
-// console.log(l2);
+
+// test train
+let count = 0;
+let eta = 0.1;
+while (count < 10000) {
+    if (count % 100 === 0) {
+        let {predict} = nn_forward(nn, input);
+        console.log(`The distance to target: ${dist_square(predict, target)}`)
+    }
+    nabla = nn_backprop(nn, input, target);
+    nn = nn_update(nn, nabla, eta);
+    count++;
+}
