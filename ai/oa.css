@@ -1,0 +1,25 @@
+#cursor {
+    width: 28px; 
+    height: 28px; 
+    top:0; 
+    left: 0; 
+    z-index: 10; 
+    border: 2px solid red;
+}
+
+#mark-canvas {
+    opacity: 0.6;
+}
+
+#data-canvas {
+    image-rendering: pixelated;
+}
+
+#draw-canvas {
+    width: 280px; 
+    image-rendering: pixelated;
+}
+
+#logger {
+    height: 200px;
+}
