@@ -21,12 +21,14 @@ function nn_init(layers) {
  * @param {{w: NdArray[], b: NdArray[]}} nn - neural network
  * @param {NdArray} input - shape(N, 1) ndarray, N should be
  *                           the same with nn.w[layer] size.
- * @param {boolean} log - log to record result and activation for each layer
+ * @param {boolean} log - defualt is `false`, whether to log result and 
+ *                          activation for each layer
  * @returns {object} the {predict, log} of nn
  * 
  * @example
  * const input = nj.array([[3,2,1]])
- * let {predict, log} = nn_forward(nn, input)
+ * let {predict, log} = nn_forward(nn, input, log=true)
+ * // or let {predict} = nn_forward(nn, input)
  */
 function nn_forward(nn, input, log=false) {  
 
@@ -77,7 +79,7 @@ function nn_backprop(nn, input, target) {
 
     const { log } = nn_forward(nn, input, true);
     const { zs, as } = log;
-    const delta = nj.multiply(as.at(-1).subtract(target), dsigmoid(zs.at(-1)));
+    let delta = nj.multiply(as.at(-1).subtract(target), dsigmoid(zs.at(-1)));
 
     nabla_w = nabla_w.with(-1, delta.dot(as.at(-2).T));
     nabla_b = nabla_b.with(-1, delta);
@@ -139,3 +141,69 @@ function dist_square(v1, v2) {
 //     count++;
 // }
 
+// In Orange Apple project
+
+let training = false; //是否正在訓練
+var trainData = []; //訓練資料
+let testData = null; //測試資料
+
+const LABEL = 10; //讀取資料的高度
+const LENGTH = 1000; //讀取資料的長度
+const CUT = 900; //切割資料長度，區分訓練和測試
+const LAYERS = [28 * 28, 16, 10];
+
+loadImage('mnist.jpg');
+
+var nn = nn_init(LAYERS);
+
+function detect() {
+    const input = nj.array(getHandDrawnData()).reshape([28*28,1]);
+    const {predict} = nn_forward(nn, input);
+    const predict_list = predict.flatten().tolist();
+    addLog(`Detect: ${predict_list.indexOf(predict.max())}`);
+}
+
+function start() {
+    training = true;
+
+    trainData = Array.from({length: LENGTH * LABEL})
+        .map((_, i) => {
+            const x = Math.floor(i / LABEL);
+            const y = i % LABEL;
+            const input = nj.array(getImageData(x * 28, y * 28, 28, 28))
+                .reshape([28 * 28, 1]);
+            let target = nj.zeros([LABEL, 1]);
+            target.set(y,0,1);
+            return {input, target};
+        });
+    loop();
+}
+
+function stop() {
+    training = false;
+}
+
+function loop(round=0) {
+    markCtx.clearRect(0, 0, 28000, 420); //清除標記
+
+    let count = train(trainData, 0.01);
+    let accuracy = (count / trainData.length * 100).toFixed(2);
+    addLog(`Round-${round}: Accuracy: ${accuracy} %`);
+    if (training) setTimeout(loop, 100, round+1);
+}
+
+function train(training_data, eta) {
+    let count = 0;
+    for (let i = 0; i < training_data.length; i++){
+        const {input, target} = training_data[i];
+        const nabla = nn_backprop(nn,input, target);
+    
+        nn = nn_update(nn, nabla, eta);
+        
+        const {predict} = nn_forward(nn, input);
+        const predict_class = predict.flatten().tolist().indexOf(predict.max());
+
+        if(target.get(predict_class, 0)===1) count++;
+    }
+    return count;
+}
