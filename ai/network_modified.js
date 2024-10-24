@@ -242,6 +242,8 @@ function dsigmoid(x) {
 
 /**
  * Calculate nabla of neural network using backward propagation algorithm
+ * representing the gradient for the cost function C_x.  `nabla_b`
+ * and`nabla_w` are layer-by-layer lists of NdArrays,
  * @param {{w: NdArray[], b: NdArray[]}} nn - neural network
  * @param {NdArray} input - shape(N, 1) ndarray, N should be
  *                           the same with nn.w[layer] size.
@@ -328,10 +330,11 @@ var trainData = []; //訓練資料
 let testData = null; //測試資料
 let learning_rate = 0.1;
 
-const LABEL = 10; //讀取資料的高度
-const LENGTH = 500; //讀取資料的長度
+const LABEL = 10; //讀取資料的高度 -> 種類
+const LENGTH = 500; //讀取資料的長度 -> 每種的資料數量
 const CUT = 900; //切割資料長度，區分訓練和測試
 const LAYERS = [28 * 28, 20, LABEL];
+// const LAYERS = [28 * 28, 8, 8, LABEL];
 
 loadImage('mnist.jpg');
 
@@ -357,7 +360,7 @@ function start() {
                 .reshape([28 * 28, 1]);
             let target = nj.zeros([LABEL, 1]);
             target.set(y,0,1);
-            return {input, target}
+            return {input, target};
         });
     loop();
 }
@@ -387,7 +390,7 @@ function train(training_data, eta) {
         const {predict} = nn_forward(nn, input);
         const predict_class = predict.flatten().tolist().indexOf(predict.max());
 
-        if(target.get(predict_class, 0)===1) count++;
+        if (target.get(predict_class, 0) === 1) count++;
         
         // if (count % 10 === 0) addLog(`dist: ${dist_square(predict, target)}`)
     }
