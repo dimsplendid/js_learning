@@ -1,4 +1,4 @@
-var SIZE = 28
+const SIZE = 28
 var dataCanvas = $('#data-canvas')[0]
 var dataCtx = dataCanvas.getContext('2d', { willReadFrequently: true })
 var drawCanvas = $('#draw-canvas')[0]
@@ -179,20 +179,18 @@ function chartLog(trainRate, testRate) {
 /**
  * Initialize a neural networks weights and bias with random number.
  * @param {number[]} layers - The number of neuron for each layer(include input)
- * @returns {{w: NdArray[], b: NdArray[]}} The neural networks constain weights(w) and bias(b)
+ * @returns {{w: NdArray[], b: NdArray[]}} 
+ *      The neural networks constain weights(w) and bias(b)
+ *      The initial weights and bias is random from -0.5 to +0.5
  * @example
  * // initialize a neural network
  * const nn = nn_init([3,2,1]);
  * // nn = {w:[...], b:[...]}
  */
 function nn_init(layers) {
-    // the final `.multiply(0.01) is to shrink the random number range, it
-    // seems too large for range 0~1, and by testing the range 0~0.01 is 
-    // good enough. This is because the sigmoid function's proper input
-    // range is small.
     const weights = layers.slice(0, -1)
-        .map((_, i) => nj.random(layers[i + 1], layers[i]).multiply(0.01));
-    const biases = layers.slice(1).map(b => nj.random(b, 1).multiply(0.01));
+        .map((_, i) => nj.random(layers[i + 1], layers[i]).subtract(0.5));
+    const biases = layers.slice(1).map(b => nj.random(b, 1).subtract(0.5));
     return { w: weights, b: biases }
 }
 
@@ -305,40 +303,36 @@ function dist_square(v1, v2) {
     return nj.sum(delta.T.dot(delta));
 }
 
-// // test main
-// let nn = nn_init([4,2,3]);
-// let input = nj.array([1, 0, 0, 0]).reshape([4,1]);
-// let target = nj.array([0,0,1]).reshape([3,1])
+function shuffle(array) {
+    let tmp, current, top = array.length;
 
-// // test training
-// let count = 0;
-// let eta = 0.1;
-// while (count < 10000) {
-//     if (count % 100 === 0) {
-//         let {predict} = nn_forward(nn, input);
-//         console.log(`The distance to target: ${dist_square(predict, target)}`)
-//     }
-//     nabla = nn_backprop(nn, input, target);
-//     nn = nn_update(nn, nabla, eta);
-//     count++;
-// }
+    if(top) while(--top) {
+        current = Math.floor(Math.random() * (top + 1));
+        tmp = array[current];
+        array[current] = array[top];
+        array[top] = tmp;
+    }
 
-// In Orange Apple project
+    return array;
+}
+
+// Main
 
 let training = false; //是否正在訓練
-var trainData = []; //訓練資料
+let trainData = []; //訓練資料
 let testData = null; //測試資料
-let learning_rate = 0.1;
+let learning_rate = 0.05;
 
 const LABEL = 10; //讀取資料的高度 -> 種類
-const LENGTH = 500; //讀取資料的長度 -> 每種的資料數量
-const CUT = 900; //切割資料長度，區分訓練和測試
-const LAYERS = [28 * 28, 20, LABEL];
-// const LAYERS = [28 * 28, 8, 8, LABEL];
+const LENGTH = 1000; //讀取資料的長度 -> 每種的資料數量
+const TEST_RATIO = 0.2; //切割資料長度，區分訓練和測試
+// const LAYERS = [28 * 28, 20, LABEL];
+const LAYERS = [28 * 28, 32, 16, LABEL];
 
-loadImage('mnist.jpg');
+// loadImage('mnist.jpg');
+loadImage('mnist_fashion.jpg');
 
-var nn = nn_init(LAYERS);
+let nn = nn_init(LAYERS);
 
 function detect() {
     const input = nj.array(getHandDrawnData()).reshape([28*28, 1]);
@@ -352,7 +346,7 @@ function detect() {
 function start() {
     training = true;
 
-    trainData = Array.from({length: LENGTH * LABEL})
+    all_data = Array.from({length: LENGTH * LABEL})
         .map((_, i) => {
             const x = Math.floor(i / LABEL);
             const y = i % LABEL;
@@ -360,8 +354,13 @@ function start() {
                 .reshape([28 * 28, 1]);
             let target = nj.zeros([LABEL, 1]);
             target.set(y,0,1);
-            return {input, target};
+            return {input, target, x, y};
         });
+    let cutting = Math.floor(LENGTH * LABEL * (1-TEST_RATIO));
+
+    // shuffle(all_data);
+    trainData = all_data.slice(0, cutting);
+    testData = all_data.slice(cutting);
     loop();
 }
 
@@ -369,30 +368,73 @@ function stop() {
     training = false;
 }
 
-function loop(round=0) {
+function loop(round=1, total_time=0) {
     markCtx.clearRect(0, 0, 28000, 420); //清除標記
 
-    let count = train(trainData, learning_rate);
-    let accuracy = (count / trainData.length * 100).toFixed(2);
-    // addLog(`Round-${round}: Accuracy: ${accuracy} %`);
-    addLog(`Accuracy: ${accuracy} %`);
-    if (training) setTimeout(loop, 100, round+1);
+    const start_time = Date.now();
+
+    const train_accuracy = (train(trainData, learning_rate) * 100).toFixed(2);
+    const test_accuracy = (test(testData) * 100).toFixed(2)
+
+    const duration = (Date.now() - start_time) / 1000;
+    const avg_duration = (duration + total_time) / round;
+
+    addLog(`Train: ${train_accuracy}, Test: ${test_accuracy} %, Training Time: ${duration.toFixed(2)} sec, avg Time: ${avg_duration.toFixed(2)} sec`);
+    chartLog(train_accuracy, test_accuracy);
+
+    if (training) setTimeout(loop, 100, round+1, total_time + duration);
 }
 
-function train(training_data, eta) {
-    let count = 0;
-    for (let i = 0; i < training_data.length; i++){
-        const {input, target} = training_data[i];
+/**
+ * training neural network and return the accuracy
+ * @param {{input: NdArray[], target: NdArray[], x: number, y: number}[]} data 
+ *      - The Training data, (x, y) is the figure
+ *        position in canvas
+ * @param {number} eta - learning rate
+ * @returns The accuracy of the prediction
+ */
+function train(data, eta) {
+
+    const accuracy = data.map(({input, target, x, y}) => {
+
         const nabla = nn_backprop(nn,input, target);
-    
-        nn = nn_update(nn, nabla, eta);
+        nn = nn_update(nn, nabla, eta); // side-effect: update global nn
         
         const {predict} = nn_forward(nn, input);
-        const predict_class = predict.flatten().tolist().indexOf(predict.max());
-
-        if (target.get(predict_class, 0) === 1) count++;
+        const predict_number = predict.flatten().tolist().indexOf(predict.max());
         
-        // if (count % 10 === 0) addLog(`dist: ${dist_square(predict, target)}`)
-    }
-    return count;
+        const is_pass = target.get(predict_number,0);
+        
+        markCtx.fillStyle = is_pass ? 'blue' : 'red';
+        markCtx.fillRect(x * SIZE, y * SIZE, SIZE, SIZE); // side-effect: draw UI
+        
+        return is_pass === 1 ? 1 : 0;
+    }).reduce((a,b) => a + b) / data.length;
+    
+    return accuracy;
+}
+
+/**
+ * test neural network and return the accuracy
+ * @param {{input: NdArray[], target: NdArray[], x: number, y: number}[]} data
+ *       - The Test data, (x, y) is the figure
+ *        position in canvas
+ * @returns The accuracy of the prediction
+ */
+function test(data) {
+
+    const accuracy = data.map(({input, target, x, y}) => {
+        
+        const {predict} = nn_forward(nn, input);
+        const predict_number = predict.flatten().tolist().indexOf(predict.max());
+        
+        const is_pass = target.get(predict_number,0);
+        
+        markCtx.fillStyle = is_pass ? 'green' : 'red';
+        markCtx.fillRect(x * SIZE, y * SIZE, SIZE, SIZE); // side-effect: draw UI
+        
+        return is_pass === 1 ? 1 : 0;
+    }).reduce((a,b) => a + b) / data.length;
+    
+    return accuracy;
 }
