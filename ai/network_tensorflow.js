@@ -29,6 +29,9 @@ function createModel() {
     // Add a single input layer
     model.add(tf.layers.dense({ inputShape: [1], units: 1, useBias: true }));
 
+    // hidden layer
+    model.add(tf.layers.dense({units: 16, activation: 'relu'}));
+
     // Add an output layer
     model.add(tf.layers.dense({ units: 1, useBias: true }));
 
@@ -85,8 +88,8 @@ async function trainModel(model, inputs, labels) {
         matrics: ['mse']
     })
 
-    const batchSize = 32;
-    const epochs = 50;
+    const batchSize = 64;
+    const epochs = 256;
 
     return await model.fit(inputs, labels, {
         batchSize,
