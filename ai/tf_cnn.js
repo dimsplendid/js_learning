@@ -1,3 +1,4 @@
+// import { Sequential } from "@tensorflow/tfjs";
 import { MnistData } from "./tf_cnn_data.js";
 
 // global variable for type checking
@@ -71,7 +72,6 @@ function getModel() {
     // Repeat another conv2d + maxPooling stack.
     // Note thate we have more filters in the convolution
     model.add(tf.layers.conv2d({
-        inputShape: [IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_CHANNELS],
         kernelSize: 5,
         filters: 16,
         strides: 1,
@@ -98,13 +98,71 @@ function getModel() {
         kernelInitializer: 'varianceScaling',
         activation: 'softmax'
     }));
-    git 
+    
+    // Choose an optimizer, loss function and accuracy metric,
+    // then compile and return the model
+    const optimizer = tf.train.adam();
+    model.compile({
+        optimizer: optimizer,
+        loss: 'categoricalCrossentropy',
+        metrics: ['accuracy'],
+    })
+
+    return model;
+}
+
+/**
+ * 
+ * @param {Sequential} model 
+ * @param {MnistData} data 
+ */
+async function train(model, data) {
+    const metrics = ['loss', 'val_loss', 'acc', 'val_acc'];
+    const container = {
+        name: 'Model Training', tab: 'Training', style: {height: '1000px'}
+    };
+    const fitCallbacks = tfvis.show.fitCallbacks(container, metrics);
+
+    const BATCH_SIZE = 512;
+    const TRAIN_DATA_SIZE = 5500;
+    const TEST_DATA_SIZE = 1000;
+
+    const [trainXs, trainYs] = tf.tidy(() => {
+        const d = data.nextTrainBatch(TRAIN_DATA_SIZE);
+        return [
+            d.xs.reshape([TRAIN_DATA_SIZE, 28, 28, 1]),
+            d.labels
+        ];
+    });
+
+    const [testXs, testYs] = tf.tidy(() => {
+        const d = data.nextTestBatch(TEST_DATA_SIZE);
+        return [
+            d.xs.reshape([TEST_DATA_SIZE, 28, 28, 1]),
+            d.labels
+        ];
+    });
+
+    return model.fit(
+        trainXs, trainYs, {
+            batchSize: BATCH_SIZE,
+            validationData: [testXs, testYs],
+            epochs: 10,
+            shuffle: true,
+            callbacks: fitCallbacks
+        }
+    );
 }
 
 async function run() {
     const data = new MnistData();
     await data.load();
     await showExample(data);
+
+    const model = getModel();
+    tfvis.show.modelSummary({name: 'Model Architecture', tab: 'model'}, model);
+
+    await train(model, data);
 }
 
 document.addEventListener('DOMContentLoaded', run)
